@@ -1,0 +1,106 @@
+#!/usr/bin/env bash
+# setup: install and uninstall git hooks via symlinks
+# Usage: ./setup install|uninstall [--repository|-R <path>]
+
+set -e
+
+HOOKS_DIR="$(pwd)/hooks"
+REPOSITORY_PATH=""
+HOOKS=(pre-commit pre-push commit-msg)
+
+show_usage() {
+    echo "Usage:"
+    echo "  $0 install [--repository|-R <path>]    Install git hooks"
+    echo "  $0 uninstall [--repository|-R <path>]  Remove git hooks"
+    echo ""
+    echo "Options:"
+    echo "  --repository, -R <path>  Target repository path (default: current directory)"
+    echo ""
+    echo "Examples:"
+    echo "  $0 install                         Install hooks in current repository"
+    echo "  $0 install -R /path/to/repo        Install hooks in specific repository"
+    echo "  $0 uninstall                       Remove hooks from current repository"
+}
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -R|--repository)
+            REPOSITORY_PATH="$2"
+            shift 2
+            ;;
+        install|uninstall)
+            ACTION="$1"
+            shift
+            ;;
+        *)
+            echo "Unknown option: $1"
+            show_usage
+            exit 1
+            ;;
+    esac
+done
+
+# Set git hooks directory
+if [ -n "$REPOSITORY_PATH" ]; then
+    # Normalize path to remove trailing slashes and double slashes
+    REPOSITORY_PATH=$(realpath "$REPOSITORY_PATH")
+    GIT_HOOKS_DIR="$REPOSITORY_PATH/.git/hooks"
+    if [ ! -d "$REPOSITORY_PATH/.git" ]; then
+        echo "Error: $REPOSITORY_PATH is not a git repository"
+        exit 1
+    fi
+else
+    GIT_HOOKS_DIR=".git/hooks"
+    if [ ! -d ".git" ]; then
+        echo "Error: Current directory is not a git repository"
+        exit 1
+    fi
+fi
+
+install_hooks() {
+    echo "Installing hooks to: $GIT_HOOKS_DIR"
+    
+    # Create hooks directory if it doesn't exist
+    if [ ! -d "$GIT_HOOKS_DIR" ]; then
+        mkdir -p "$GIT_HOOKS_DIR"
+        echo "Created hooks directory: $GIT_HOOKS_DIR"
+    fi
+    
+    for hook in "${HOOKS[@]}"; do
+        src="$HOOKS_DIR/$hook"
+        dest="$GIT_HOOKS_DIR/$hook"
+        if [ -f "$src" ]; then
+            ln -sf "$(realpath "$src")" "$dest"
+            echo "Installed $hook hook."
+        else
+            echo "Warning: $src not found, skipping."
+        fi
+    done
+}
+
+uninstall_hooks() {
+    echo "Removing hooks from: $GIT_HOOKS_DIR"
+    for hook in "${HOOKS[@]}"; do
+        dest="$GIT_HOOKS_DIR/$hook"
+        if [ -L "$dest" ]; then
+            rm "$dest"
+            echo "Removed $hook hook."
+        elif [ -f "$dest" ]; then
+            echo "Warning: $dest exists but is not a symlink, skipping."
+        fi
+    done
+}
+
+case "$ACTION" in
+    install)
+        install_hooks
+        ;;
+    uninstall)
+        uninstall_hooks
+        ;;
+    *)
+        show_usage
+        exit 1
+        ;;
+esac

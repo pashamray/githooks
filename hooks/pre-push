@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Example pre-push hook script
+# Add your logic here
+
+# ...existing code...

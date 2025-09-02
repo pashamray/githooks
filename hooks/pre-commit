@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# Pre-commit hook script
+# Runs code quality checks before committing
+
+set -e
+
+# Get the directory where this script is located (following symlinks)
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
+# Get the root directory of githooks project
+GITHOOKS_ROOT="$(dirname "$SCRIPT_DIR")"
+
+echo "Pre-commit hook starting..."
+echo "Working directory: $(pwd)"
+echo "Githooks root: $GITHOOKS_ROOT"
+
+# Run PHP code style fixer
+if [ -f "$GITHOOKS_ROOT/scripts/run-phpcbf.sh" ]; then
+    echo "Running PHP Code Beautifier and Fixer..."
+    "$GITHOOKS_ROOT/scripts/run-phpcbf.sh"
+else
+    echo "Warning: phpcbf script not found at $GITHOOKS_ROOT/scripts/run-phpcbf.sh"
+fi
+
+# Run Rector for PHP refactoring
+if [ -f "$GITHOOKS_ROOT/scripts/run-rector.sh" ]; then
+    echo "Running Rector..."
+    "$GITHOOKS_ROOT/scripts/run-rector.sh"
+else
+    echo "Warning: rector script not found at $GITHOOKS_ROOT/scripts/run-rector.sh"
+fi
+
+echo "Pre-commit checks completed successfully."
