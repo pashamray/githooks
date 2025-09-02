@@ -6,7 +6,9 @@ This project manages Git hooks using symlinks for easy installation and removal.
 ## Structure
 - `setup` — Bash script to install/uninstall hooks via symlinks
 - `hooks/` — Main directory for hook scripts
-  - `pre-commit`, `pre-push`, `commit-msg` — Example hook scripts
+  - `pre-commit`, `pre-push`, `commit-msg` — Hook scripts
+- `configs/` — Configuration files directory
+  - `pre-commit.conf`, `pre-push.conf`, `commit-msg.conf` — Configuration files for each hook
 - `scripts/` — Helper scripts directory
   - `run-rector.sh` — Runs rector on staged PHP files
   - `run-phpcbf.sh` — Runs phpcbf on staged PHP files
@@ -34,10 +36,23 @@ This project manages Git hooks using symlinks for easy installation and removal.
 - Helper scripts go in `scripts/` and can be sourced from main hooks.
 - Only hooks listed in the `HOOKS` array in `setup` are managed.
 - Hook scripts can use Bash or other interpreters, but must have the correct shebang.
+- Scripts to run during hooks are configured in `configs/<hook-name>.conf` (comment out to disable).
 
 ## Examples
 - To add a new hook, create `hooks/<hook-name>` and add it to the `HOOKS` array in `setup`.
 - To share logic, put reusable code in `scripts/` and source it from hook scripts.
+- Configure which scripts run by editing specific hook configuration files:
+  ```
+  # In configs/pre-commit.conf
+  run-phpcbf.sh
+  run-rector.sh
+  # custom-linter.sh
+  ```
+  ```
+  # In configs/pre-push.conf
+  # run-tests.sh
+  # security-scan.sh
+  ```
 - Use PHP helpers in pre-commit hook:
   ```bash
   # In hooks/pre-commit

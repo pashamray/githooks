@@ -1,5 +1,61 @@
 #!/usr/bin/env bash
-# Example commit-msg hook script
-# Add your logic here
+# Commit-msg hook script
+# Validates commit messages
 
-# ...existing code...
+set -e
+
+# Get the directory where this script is located (following symlinks)
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
+# Get the root directory of githooks project
+GITHOOKS_ROOT="$(dirname "$SCRIPT_DIR")"
+# Get the name of this hook
+HOOK_NAME=$(basename "${BASH_SOURCE[0]}")
+
+echo "Commit-msg hook starting..."
+echo "Working directory: $(pwd)"
+echo "Githooks root: $GITHOOKS_ROOT"
+
+# Function to run scripts based on configuration
+run_configured_scripts() {
+    local hook_name="$1"
+    local commit_msg_file="$2"
+    local config_file="$GITHOOKS_ROOT/configs/${hook_name}.conf"
+    
+    if [ -f "$config_file" ]; then
+        echo "Reading configuration from: $config_file"
+        
+        # Read enabled scripts from config (ignore comments and empty lines)
+        local scripts=$(grep -v '^#' "$config_file" | grep -v '^$' | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//')
+        
+        if [ -n "$scripts" ]; then
+            echo "Enabled scripts for $hook_name:"
+            echo "$scripts" | while read -r script; do
+                echo "  - $script"
+            done
+            
+            # Run each enabled script (pass commit message file as argument)
+            echo "$scripts" | while read -r script; do
+                if [ -n "$script" ]; then
+                    local script_path="$GITHOOKS_ROOT/scripts/$script"
+                    if [ -f "$script_path" ] && [ -x "$script_path" ]; then
+                        echo "Executing: $script"
+                        "$script_path" "$commit_msg_file"
+                    else
+                        echo "Error: Script $script not found or not executable at $script_path"
+                        exit 1
+                    fi
+                fi
+            done
+        else
+            echo "No scripts enabled in configuration file for $hook_name."
+        fi
+    else
+        echo "Configuration file not found at $config_file"
+        echo "Create $config_file to configure scripts for this hook."
+    fi
+}
+
+# Run configured scripts for this hook (pass commit message file)
+run_configured_scripts "$HOOK_NAME" "$1"
+
+echo "Commit-msg checks completed successfully."

@@ -8,24 +8,59 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
 # Get the root directory of githooks project
 GITHOOKS_ROOT="$(dirname "$SCRIPT_DIR")"
+# Get the name of this hook
+HOOK_NAME=$(basename "${BASH_SOURCE[0]}")
 
 echo "Pre-commit hook starting..."
 echo "Working directory: $(pwd)"
 echo "Githooks root: $GITHOOKS_ROOT"
 
-# Run PHP code style fixer
-if [ -f "$GITHOOKS_ROOT/scripts/run-phpcbf.sh" ]; then
-    "$GITHOOKS_ROOT/scripts/run-phpcbf.sh"
-else
-    echo "Warning: phpcbf script not found at $GITHOOKS_ROOT/scripts/run-phpcbf.sh"
-fi
+# Function to run scripts based on configuration
+run_configured_scripts() {
+    local hook_name="$1"
+    local config_file="$GITHOOKS_ROOT/configs/${hook_name}.conf"
+    
+    if [ -f "$config_file" ]; then
+        echo "Reading configuration from: $config_file"
+        
+        # Read enabled scripts from config (ignore comments and empty lines)
+        local scripts=$(grep -v '^#' "$config_file" | grep -v '^$' | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//')
+        
+        if [ -n "$scripts" ]; then
+            echo "Enabled scripts for $hook_name:"
+            printf "%s\n" $scripts | while read -r script; do
+                echo "  - $script"
+            done
+            
+            # Convert scripts to array and run each script
+            local script_array=($scripts)
+            for script in "${script_array[@]}"; do
+                if [ -n "$script" ]; then
+                    local script_path="$GITHOOKS_ROOT/scripts/$script"
+                    if [ -f "$script_path" ] && [ -x "$script_path" ]; then
+                        echo "Executing: $script"
+                        "$script_path"
+                        if [ $? -ne 0 ]; then
+                            echo "Error: Script $script failed"
+                            exit 1
+                        fi
+                    else
+                        echo "Error: Script $script not found or not executable at $script_path"
+                        exit 1
+                    fi
+                fi
+            done
+        else
+            echo "No scripts enabled in configuration file for $hook_name."
+        fi
+    else
+        echo "Configuration file not found at $config_file"
+        echo "Create $config_file to configure scripts for this hook."
+    fi
+}
 
-# Run Rector for PHP refactoring
-if [ -f "$GITHOOKS_ROOT/scripts/run-rector.sh" ]; then
-    "$GITHOOKS_ROOT/scripts/run-rector.sh"
-else
-    echo "Warning: rector script not found at $GITHOOKS_ROOT/scripts/run-rector.sh"
-fi
+# Run configured scripts for this hook
+run_configured_scripts "$HOOK_NAME"
 
 # Check if there are still files staged for commit
 STAGED_FILES=$(git diff --cached --name-only)
