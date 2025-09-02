@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Helper to run phpcbf on staged PHP files
 
+echo "Running PHP Code Beautifier and Fixer..."
+
 FILES=$(git diff --cached --name-only --diff-filter=ACM | grep '\.php$' || true)
 if [ -z "$FILES" ]; then
     echo "No PHP files to process with phpcbf."

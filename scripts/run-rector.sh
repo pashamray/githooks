@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Helper to run rector on staged PHP files
 
+echo "Running Rector..."
+
 FILES=$(git diff --cached --name-only --diff-filter=ACM | grep '\.php$' || true)
 if [ -z "$FILES" ]; then
     echo "No PHP files to process with rector."
